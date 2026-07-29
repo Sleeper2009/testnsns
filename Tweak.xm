@@ -2,12 +2,16 @@
 #import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
 
-#if __has_include(<rootless.h>)
-    #import <rootless.h>
-    #define JB_PATH(path) jbroot(path)
-#else
-    #define JB_PATH(path) (@"/var/jb" path)
-#endif
+// Khong dung rootless.h/jbroot() luc compile vi SDK build tren CI khong co
+// ham nay (chi ton tai tren may da jailbreak that). Tu chon duong dan luc
+// runtime bang cach kiem tra /var/jb co ton tai khong.
+static NSString *LMRootlessPath(NSString *suffix) {
+    NSString *rootlessPath = [@"/var/jb" stringByAppendingString:suffix];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/jb"]) {
+        return rootlessPath;
+    }
+    return suffix;
+}
 
 // ================= DIAGNOSTIC LOGGER =================
 // Bat/tat bang file: touch /var/mobile/Documents/lm_diag_on
@@ -21,17 +25,14 @@ static BOOL LMDiagEnabled(void) {
     static BOOL cached = NO;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
-        NSString *flagPath = JB_PATH(@"/var/mobile/Documents/lm_diag_on");
-        cached = [[NSFileManager defaultManager] fileExistsAtPath:flagPath] ||
-                 [[NSFileManager defaultManager] fileExistsAtPath:@"/var/mobile/Documents/lm_diag_on"];
+        NSString *flagPath = LMRootlessPath(@"/var/mobile/Documents/lm_diag_on");
+        cached = [[NSFileManager defaultManager] fileExistsAtPath:flagPath];
     });
     return cached;
 }
 
 static NSString *LMDiagLogPath(void) {
-    NSString *p = JB_PATH(@"/var/mobile/Documents/LiquidMorphDiag.log");
-    if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/jb"]) return p;
-    return @"/var/mobile/Documents/LiquidMorphDiag.log";
+    return LMRootlessPath(@"/var/mobile/Documents/LiquidMorphDiag.log");
 }
 
 static void LMDiagLog(NSString *format, ...) {
