@@ -1,0 +1,47 @@
+name: Build LiquidMorphDiag
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Cache Theos
+        id: cache-theos
+        uses: actions/cache@v4
+        with:
+          path: theos
+          key: theos-${{ runner.os }}-v1
+
+      - name: Install Theos
+        if: steps.cache-theos.outputs.cache-hit != 'true'
+        run: |
+          git clone --recursive https://github.com/theos/theos.git theos
+
+      - name: Install iOS SDK (theos/sdks)
+        run: |
+          git clone -n --depth=1 --filter=tree:0 https://github.com/theos/sdks.git sdks-repo
+          cd sdks-repo
+          git sparse-checkout set --no-cone iPhoneOS16.5.sdk
+          git checkout
+          mkdir -p ../theos/sdks
+          mv iPhoneOS16.5.sdk ../theos/sdks/
+
+      - name: Build package
+        env:
+          THEOS: ${{ github.workspace }}/theos
+        run: |
+          export THEOS=${{ github.workspace }}/theos
+          make package FINALPACKAGE=1
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiquidMorphDiag-deb
+          path: packages/*.deb
