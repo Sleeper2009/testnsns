@@ -24,12 +24,7 @@ jobs:
       - name: Install Theos (script chính thức, tự tải toolchain + sdk)
         if: steps.cache-theos.outputs.cache-hit != 'true'
         run: |
-          sudo NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
-        env:
-          THEOS: /home/runner/theos
-
-      - name: Fix ownership
-        run: sudo chown -R $(whoami) /home/runner/theos
+          NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
 
       - name: Build package
         run: |
