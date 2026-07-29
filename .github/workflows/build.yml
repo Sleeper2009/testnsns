@@ -8,36 +8,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      THEOS: /home/runner/theos
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Cache Theos
+      - name: Cache Theos (bao gồm toolchain + sdks)
         id: cache-theos
         uses: actions/cache@v4
         with:
-          path: theos
-          key: theos-${{ runner.os }}-v1
+          path: /home/runner/theos
+          key: theos-${{ runner.os }}-v2
 
-      - name: Install Theos
+      - name: Install Theos (script chính thức, tự tải toolchain + sdk)
         if: steps.cache-theos.outputs.cache-hit != 'true'
         run: |
-          git clone --recursive https://github.com/theos/theos.git theos
+          sudo NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+        env:
+          THEOS: /home/runner/theos
 
-      - name: Install iOS SDK (theos/sdks)
-        run: |
-          git clone -n --depth=1 --filter=tree:0 https://github.com/theos/sdks.git sdks-repo
-          cd sdks-repo
-          git sparse-checkout set --no-cone iPhoneOS16.5.sdk
-          git checkout
-          mkdir -p ../theos/sdks
-          mv iPhoneOS16.5.sdk ../theos/sdks/
+      - name: Fix ownership
+        run: sudo chown -R $(whoami) /home/runner/theos
 
       - name: Build package
-        env:
-          THEOS: ${{ github.workspace }}/theos
         run: |
-          export THEOS=${{ github.workspace }}/theos
+          export THEOS=/home/runner/theos
           make package FINALPACKAGE=1
 
       - name: Upload .deb artifact
